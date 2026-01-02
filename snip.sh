@@ -197,8 +197,46 @@ edit() {
 
     snippet_path="$SNIPPETS_DIR/$1"
 
-    if [ ! -e "$snippet_path" ]; then
-        abort "\"$snippet_path\" doesn't exists. Exiting ..."
+    if [ -f "$snippet_path.gpg" ]; then
+        gpgId="$(cat $SNIP_GPG_ID_FILEPATH | tr -d '\n' | tr -d ' ')"
+        snippet=$(gpg -q -d -u "$gpgId" "$snippet_path.gpg")
+
+        tmp=$(mktemp)
+        echo "$snippet" > "$tmp"
+
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            last_mod=$(stat -f %m "$tmp")
+        elif [[ "$(uname -s)" == "Linux" ]]; then
+            last_mod=$(stat -c %Y "$tmp")
+        fi
+
+        $EDITOR "$tmp" &
+
+        while true; do
+            if [[ "$(uname -s)" == "Darwin" ]]; then
+                current_mod=$(stat -f %m "$tmp")
+            elif [[ "$(uname -s)" == "Linux" ]]; then
+                current_mod=$(stat -c %Y "$tmp")
+            fi
+
+            if [ "$current_mod" != "$last_mod" ]; then
+                echo "File saved! Running action..."
+
+                rm -f "$snippet_path.gpg"
+
+                cat "$tmp" > "$snippet_path"
+                encrypt "$1"
+
+                last_mod=$current_mod
+            fi
+            sleep 1
+        done
+
+        exit
+    fi
+
+    if [ ! -f "$snippet_path" ]; then
+        abort "\"$snippet_path\" doesn't exists or is a directory. Exiting ..."
     fi
 
     $EDITOR "$snippet_path"
@@ -289,6 +327,13 @@ show() {
         if [ -z "$snippet_path" ]; then
             exit
         fi
+
+        # echo "Snippet Path: $snippet_path"
+
+        # if [ -f "$snippet_path.gpg" ]; then
+        #     echo "HERE"
+        #     snippet_path="$snippet_path.gpg"
+        # fi
     fi
 
     if [ ! -f "$snippet_path" ]; then
@@ -298,14 +343,15 @@ show() {
     snippet=""
 
     if [[ "$snippet_path" == *.gpg ]]; then
-        snippet=$(decrypt "$1")
+        gpgId="$(cat $SNIP_GPG_ID_FILEPATH | tr -d '\n' | tr -d ' ')"
+        snippet=$(gpg -q -d -u "$gpgId" "$snippet_path")
     else
         snippet=$(cat "$snippet_path")
     fi
 
     if [ -n "$2" ]; then
         if [[ "$2" == "--raw" ]]; then
-            echo "$snippet" | bat --color=always -p 
+            echo "$snippet" | bat --color=always -p
 
             exit
         fi
@@ -339,10 +385,10 @@ show() {
 
             snippet="${snippet//\@{$varName\}/$userInput}"
         fi
-        
+
     done
 
-    echo "$snippet" | bat --color=always -p 
+    echo "$snippet" | bat --color=always -p
 }
 
 raw() {
@@ -368,11 +414,11 @@ run() {
 
     # bat --color=always -p "$snippet_path" -p
 
-    
+
 
     cmd=$(show "$@")
 
-    echo "$cmd" | bat --color=always -p 
+    echo "$cmd" | bat --color=always -p
 
     echo -e "\nPress CTRL-R to run, or any other key to exit...\n"
 
@@ -466,7 +512,7 @@ runrofi() {
 
         if [ -d "$SNIPPETS_DIR/$snippet_path" ]; then
             snippet_name=$(rofi -dmenu -theme-str 'listview { enabled: false;}' -p ' Snippet Name >>')
-            
+
             snippet_path="$snippet_path/$snippet_name"
         fi
 
@@ -572,7 +618,7 @@ for ((i=0; i<$COUNT; i++)); do
 
                 ${cmds[i]} "$@"
                 break
-        
+
         fi
 done
 
@@ -585,4 +631,4 @@ if [ $cmd_found == false ]; then
 
     fi
 
-fi 
+fi
