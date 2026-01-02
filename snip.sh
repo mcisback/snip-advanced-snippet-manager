@@ -1,12 +1,7 @@
 #!/bin/bash
 # Snippet Manager in Bash
 
-# NOTE: notification for Mac:
-##  osascript -e 'display notification "Build finished" with title "CI" subtitle "Success"'
-## or terminal-notifier
 # TODO: add trash
-# TODO: add default values to var, like @{bindAddres defaults to 0.0.0.0}
-# FIX: sometime it asks again var already setted
 
 
 case "$(uname -s)" in
