@@ -58,6 +58,7 @@ cmds=(
 "encrypt"
 "decrypt"
 "doctor"
+"otp"
 )
 
 alss=(
@@ -78,6 +79,7 @@ alss=(
 "enc"
 "dec"
 "doc"
+"otp"
 )
 
 msgs=(
@@ -98,6 +100,7 @@ msgs=(
 "encrypt a snippet using gpg_id in $SNIP_GPG_ID_FILEPATH"
 "decrypt a snippet using gpg_id in $SNIP_GPG_ID_FILEPATH"
 "Check if all requirements are met"
+"Store OTP secrets in otp folder. If otp exists, show the code else it create a new one"
 )
 
 COUNT=${#cmds[@]}
@@ -230,7 +233,7 @@ encrypt() {
 
     cd "$snipper_dir"
 
-    gpg -e -r "$gpgId" $filename
+    gpg --yes -e -r "$gpgId" $filename
 
     rm "$filename"
 }
@@ -691,6 +694,97 @@ gpg_id() {
     shift
 
     echo "$gpgId" > "$SNIP_DIR/.gpgid"
+}
+
+otp() {
+    action="show"
+
+    if [ "$1" == "edit" ]; then
+        action="edit"
+        shift
+    elif [ "$1" == "del" ]; then
+        action="del"
+        shift
+    elif [ "$1" == "show" ]; then
+        shift
+    fi
+
+    OTP_DIR="$SNIPPETS_DIR/otp"
+    s_path="$1"
+
+    if [ ! -d "$OTP_DIR" ]; then
+        mkdir -p "$OTP_DIR"
+    fi
+
+    if [ -z "$s_path" ]; then
+        snippet_path=$(find "$OTP_DIR" -type f | sed -e "s#$OTP_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 '$OTP_DIR/{}'")
+
+        if [ -z "$snippet_path" ]; then
+            exit
+        fi
+
+        snippet_path="$OTP_DIR/$snippet_path"
+        snippet_path=$(echo "$snippet_path" | sed 's#\.gpg$##')
+    else
+        snippet_path="$OTP_DIR/$s_path"
+    fi
+
+    if [ -f "$snippet_path.gpg" ]; then
+        gpgId="$(cat $SNIP_GPG_ID_FILEPATH | tr -d '\n' | tr -d ' ')"
+        otpSecret=$(gpg -q -d -u "$gpgId" "$snippet_path.gpg")
+
+        if [ "$action" == "show" ]; then
+            otp=$(oathtool --totp --base32 "$otpSecret")
+            echo "$otp"
+        elif [ "$action" == "edit" ]; then
+            otpSecret=$(gum input --placeholder "Edit Encrypted OTP Secret" --value="$otpSecret")
+
+            echo "$otpSecret" > "$snippet_path"
+
+            snippet_path=$(echo "$snippet_path" | sed "s#^$SNIPPETS_DIR/##")
+
+            encrypt "$snippet_path"
+        elif [ "$action" == "del" ]; then
+            rm -f "$snippet_path.gpg"
+
+            echo "✅ Deleted $snippet_path.gpg"
+        fi
+
+        exit
+    fi
+
+    if [ ! -f "$snippet_path" ]; then
+        otpSecret=$(gum input --placeholder "Enter New OTP Secret")
+
+        if [ -z "$otpSecret" ]; then
+            echo "⚠️ OTP Secret cannot be empty"
+            exit
+        fi
+
+        mkdir -p "$(dirname "$snippet_path")"
+
+        echo "$otpSecret" > "$snippet_path"
+
+        if gum confirm "Do you want to encrypt the otp?" --default="no"; then
+            encrypt "otp/$s_path"
+        fi
+
+        exit
+    fi
+
+    otpSecret=$(cat "$snippet_path")
+    if [ "$action" == "show" ]; then
+        otp=$(oathtool --totp --base32 "$otpSecret")
+        echo "$otp"
+    elif [ "$action" == "edit" ]; then
+        otpSecret=$(gum input --placeholder "Edit OTP Secret" --value="$otpSecret")
+
+        echo "$otpSecret" > "$snippet_path"
+    elif [ "$action" == "del" ]; then
+        rm -f "$snippet_path"
+
+        echo "✅ Deleted $snippet_path"
+    fi
 }
 
 cmd="$1"
