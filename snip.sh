@@ -6,11 +6,18 @@
 ## or terminal-notifier
 
 
-# if [[ "$(uname -s)" == "Darwin" ]]; then
-#   echo "Running on macOS"
-# elif [[ "$(uname -s)" == "Linux" ]]; then
-#   echo "Running on Linux"
-# fi
+case "$(uname -s)" in
+    Darwin)
+        # macOS code here
+        ;;
+    Linux)
+        # Linux code here
+        ;;
+    *)
+        echo "Unsupported OS"
+        exit 1
+        ;;
+esac
 
 
 SNIP_DIR="$HOME/.snip"
@@ -212,6 +219,8 @@ edit() {
 
         $EDITOR "$tmp" &
 
+        echo "Hit Ctrl-C to exit encrypted edit mode ..."
+
         while true; do
             if [[ "$(uname -s)" == "Darwin" ]]; then
                 current_mod=$(stat -f %m "$tmp")
@@ -265,7 +274,7 @@ del() {
 
     rm "$snippet_path"
 
-    echo "[*] Deleted \"$snippet_path\""
+    echo "✅ Deleted \"$snippet_path\""
 }
 
 list() {
@@ -281,39 +290,34 @@ list() {
 search() {
     snippet_path="$SNIPPETS_DIR"
 
-    if [ ! -e "$snippet_path" ]; then
+    if [ ! -d "$snippet_path" ]; then
         abort "\"$snippet_path\" doesn't exists. Exiting ..."
     fi
 
     action="$1"
 
-    if echo "$action" | grep -v '^--' > /dev/null; then
-        search_term="$action"
+    snippet_path=$(find "$snippet_path" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")
 
-        if [ -n "$search_term" ]; then
-            find "$snippet_path" -type f | grep "$search_term" | sed -e "s#$SNIPPETS_DIR/##g"
-
-            exit;
-        fi
+    if [ -z "$snippet_path" ]; then
+       exit
     fi
 
     if [ -z "$action" ]; then
-        action="--show"
+        action=$(gum choose "show" "edit" "delete")
     fi
 
-    snippet_path="$SNIPPETS_DIR/$(find "$snippet_path" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --preview "bat --color=always --style=numbers --line-range=:500 {}")"
-
-    if [ "$action" == "-e" ] || [ "$action" == "--edit" ]; then
-        "$EDITOR" "$snippet_path"
-    elif [ "$action" == "-s" ] || [ "$action" == "--show" ]; then
-        bat --color=always -p "$snippet_path" -p
-    elif [ "$action" == "-d" ] || [ "$action" == "--delete" ]; then
-        rm "$snippet_path"
+    if  [ "$action" == "edit" ]; then
+        snippet_path=$(echo "$snippet_path" | sed 's#\.gpg$##')
+        edit "$snippet_path"
+    elif [ "$action" == "show" ]; then
+        show "$snippet_path"
+    elif [ "$action" == "delete" ]; then
+        del "$snippet_path"
     fi
 }
 
 show() {
-    [ -z "$1" ] && abort "Missing snippet path"
+    # [ -z "$1" ] && abort "Missing snippet path"
 
     snippet_path="$SNIPPETS_DIR/$1"
 
@@ -322,7 +326,10 @@ show() {
     fi
 
     if [ -d "$snippet_path" ]; then
-        snippet_path=$(find "$snippet_path" -type f | fzf --delimiter / --with-nth -1 --height=40% --preview "bat --color=always --style=numbers --line-range=:500 {}")
+        snippet_path="$SNIPPETS_DIR/$(find "$snippet_path" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")"
+
+        # echo "Snippet Path: $snippet_path"
+        # exit
 
         if [ -z "$snippet_path" ]; then
             exit
