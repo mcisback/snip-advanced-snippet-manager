@@ -364,7 +364,7 @@ brew install gum
 3. **Backup**: Regular sync keeps snippets safe
    ```bash
    # Add to cron
-   0 */6 * * * cd ~/.snip && snip sync "Auto backup"
+   0 */6 * * * snip sync "Auto backup"
    ```
 
 4. **Categories**: Use consistent naming for easy searching
