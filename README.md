@@ -1,12 +1,12 @@
 # Snip - Advanced Snippet Manager
 ## Written in Bash
 
-A powerful command-line snippet manager for storing, organizing, and executing code snippets and commands with support for encryption, variables, OTP codes, and multiple interfaces (CLI, fzf, rofi).
+A powerful command-line snippet manager for storing, organizing, and executing code snippets and commands with support for encryption, variables with default values, OTP codes, and multiple interfaces (CLI, fzf, rofi).
 
 ## Features
 
 - **Snippet Management**: Create, edit, delete, list, and search snippets
-- **Variable Substitution**: Use `@{varName}` placeholders for dynamic values
+- **Variable Substitution**: Use `@{varName}` placeholders for dynamic values with optional defaults
 - **GPG Encryption**: Encrypt sensitive snippets with GPG
 - **OTP Support**: Store and generate TOTP codes for 2FA
 - **Secrets Management**: Store and encrypt sensitive data securely like API keys, passwords, etc...
@@ -15,6 +15,7 @@ A powerful command-line snippet manager for storing, organizing, and executing c
 - **Share Snippets**: Quick sharing via termbin.com
 - **Safe Execution**: Preview and confirm before running snippets
 - **Health Check**: Verify all dependencies are installed
+- **Cross-Platform**: Works on macOS and Linux
 
 ## Installation
 
@@ -43,6 +44,7 @@ sudo mv snip /usr/local/bin/
 - `git` - For sync functionality
 - `oathtool` - For OTP/TOTP code generation
 - `terminal-notifier` or `notify-send` - For notifications (required for rofi)
+- `pbcopy` (macOS) or `xclip` (Linux) - For clipboard support in rofi
 
 ### Check Dependencies
 
@@ -216,6 +218,32 @@ When you show or run this snippet, you'll be prompted for:
 
 Each unique variable is only prompted once, and all instances are replaced with the same value.
 
+#### Default Values
+
+You can specify default values for variables using the `defaults to` syntax:
+
+```bash
+# Example snippet: docker/run-with-defaults
+docker run -d \
+  --name @{container_name defaults to my-app} \
+  -p @{port defaults to 8080}:@{port defaults to 8080} \
+  @{image_name defaults to nginx:latest}
+```
+
+When prompted, the default value will be pre-filled. Simply press Enter to accept the default, or type a new value to override it.
+
+**Default value syntax:**
+- `@{varName defaults to defaultValue}` - Variable with a default
+- The default value appears after the ` defaults to ` delimiter
+- Spaces are preserved in default values
+
+**Example with complex defaults:**
+```bash
+# Snippet: deploy/kubernetes
+kubectl apply -f @{manifest defaults to deployment.yaml}
+kubectl rollout status deployment/@{app_name defaults to my-application}
+```
+
 ### Encryption
 
 #### Create a New GPG Key
@@ -299,6 +327,17 @@ snip raw secrets/openai/api-key
 
 Snip includes built-in support for managing TOTP (Time-based One-Time Password) codes for two-factor authentication.
 
+#### OTP Commands
+
+| Action | Command | Description |
+|--------|---------|-------------|
+| Create | `snip otp myservice` | Create new OTP secret or show an existing TOTP code |
+| Show | `snip otp show myservice` | Show current TOTP code |
+| Edit | `snip otp edit myservice` | Edit OTP secret |
+| Delete | `snip otp del myservice` | Delete OTP secret |
+
+**Note:** When no action is specified, `show` is the default behavior.
+
 #### Create OTP Code
 
 ```bash
@@ -314,9 +353,12 @@ snip otp github/personal
 #### View OTP Code
 
 ```bash
-# Show current TOTP code
-snip otp myservice
+# Show current TOTP code (explicit action)
+snip otp show myservice
 # Outputs: 123456
+
+# Show current TOTP code (implicit, same as above)
+snip otp myservice
 
 # Interactive selection (no argument)
 snip otp
@@ -341,8 +383,9 @@ snip otp edit github/personal
 # Delete OTP secret
 snip otp del myservice
 
-# Delete via interactive selection
-snip otp del
+# Delete encrypted OTP
+snip otp del github/personal
+# Removes the .gpg file
 ```
 
 **Note:** OTP secrets are stored in `~/.snip/snippets/otp/` and can be encrypted for additional security.
@@ -406,6 +449,15 @@ Set custom rofi theme:
 ```bash
 # In ~/.snip/.env
 ROFI_USER_THEME=/path/to/your/theme.rasi
+```
+
+## Copy To Clipboard
+
+**Note:** The rofi copy function uses `pbcopy` (macOS). For Linux, you need `xclip` or `xsel`.
+**On Linux:**
+Add this in your .bashrc
+```bash
+alias pbcopy='xclip -selection clipboard'
 ```
 
 ## Snippet Organization
@@ -548,24 +600,37 @@ brew install oath-toolkit
 - Check that your GPG key is properly configured
 - Verify the GPG ID matches your key: `snip gpg_id`
 
+### Platform-Specific Issues
+
+**macOS:**
+- Uses `stat -f %m` for file modification time
+- Uses `pbcopy` for clipboard in rofi mode
+
+**Linux:**
+- Uses `stat -c %Y` for file modification time
+- May need `xclip` or `xsel` for clipboard support
+
 ## Tips & Tricks
 
 1. **Quick Access**: Create shell aliases:
    ```bash
-   alias s='snip show'
+   alias s='snip'
    alias sr='snip run'
    alias sf='snip search'
    alias se='snip edit'
    alias sotp='snip otp'
    ```
 
-2. **Template Snippets**: Use variables for reusable templates:
+2. **Template Snippets with Defaults**: Use variables with defaults for reusable templates:
    ```bash
    # Snippet: projects/new
    mkdir -p @{project_name}/{src,tests,docs}
    cd @{project_name}
    git init
    echo "# @{project_name}" > README.md
+   npm init -y
+   echo "node_modules" > .gitignore
+   code @{editor_flags defaults to .}
    ```
 
 3. **Backup**: Regular sync keeps snippets safe:
@@ -587,12 +652,14 @@ brew install oath-toolkit
    # Later: snip otp github outputs current code
    ```
 
-6. **Complex Variables**: Chain snippets with variables:
+6. **Complex Variables with Defaults**: Chain snippets with sensible defaults:
    ```bash
    # Snippet: deploy/app
-   IMAGE=@{docker_image}
-   TAG=@{version}
-   kubectl set image deployment/@{app_name} app=$IMAGE:$TAG
+   IMAGE=@{docker_image defaults to myapp}
+   TAG=@{version defaults to latest}
+   REPLICAS=@{replicas defaults to 3}
+   kubectl set image deployment/@{app_name defaults to web} app=$IMAGE:$TAG
+   kubectl scale deployment/@{app_name defaults to web} --replicas=$REPLICAS
    ```
 
 7. **Interactive Editing**: Use fzf for quick access:
@@ -633,16 +700,27 @@ snip run docker/cleanup
 
 ### Project Templates
 ```bash
-# Create project template with variables
+# Create project template with variables and defaults
 snip add templates/react-app
 # Content:
-# npx create-react-app @{app_name}
-# cd @{app_name}
-# npm install @{dependencies}
+# npx create-react-app @{app_name defaults to my-app}
+# cd @{app_name defaults to my-app}
+# npm install @{dependencies defaults to axios}
 
 # Use template
 snip run templates/react-app
-# Prompts for: app_name, dependencies
+# Prompts with pre-filled defaults for: app_name, dependencies
+```
+
+### SSH Connection Manager
+```bash
+# Create SSH snippets with defaults
+snip add ssh/production
+# Content:
+# ssh @{user defaults to deploy}@@{host defaults to prod.example.com} -p @{port defaults to 22}
+
+# Quick connect
+snip run ssh/production
 ```
 
 ## File Structure
@@ -673,7 +751,8 @@ This script is provided as-is for personal and commercial use.
 ## Changelog
 
 ### Latest Version
-- ✅ Added OTP/TOTP support for 2FA codes
+- ✅ Added variable default values with `@{var defaults to value}` syntax
+- ✅ Added OTP/TOTP support for 2FA codes with show/edit/del actions
 - ✅ Added `doctor` command to check dependencies
 - ✅ Improved encrypted snippet editing with auto-save
 - ✅ Enhanced error handling with `gum` integration
