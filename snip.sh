@@ -1,7 +1,7 @@
 #!/bin/bash
 # Snippet Manager in Bash
 
-# TODO: add notification for Mac:
+# NOTE: notification for Mac:
 ##  osascript -e 'display notification "Build finished" with title "CI" subtitle "Success"'
 ## or terminal-notifier
 # TODO: add trash
