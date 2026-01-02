@@ -280,7 +280,7 @@ edit() {
 
 del() {
     if [ -z "$1" ]; then
-        snippet_path=$(find "$SNIPPETS_DIR" | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")
+        snippet_path=$(find "$SNIPPETS_DIR" | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 $SNIPPETS_DIR/{}")
 
         if [ -z "$snippet_path" ]; then
             exit
