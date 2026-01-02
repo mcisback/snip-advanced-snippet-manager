@@ -70,10 +70,10 @@ Available config commands:
 
 ### Basic Commands
 
-| Command | Alias | Description |
+| Command | Shortcut | Description |
 |---------|-------|-------------|
 | `help` | `h` | Display help information |
-| `add` | `a` | Create a new snippet |
+| `add` | `a` | Create a new snippet or edit it |
 | `edit` | `e` | Edit an existing snippet |
 | `del` | `d` | Delete a snippet |
 | `list` | `ls` | List snippets in a directory |
