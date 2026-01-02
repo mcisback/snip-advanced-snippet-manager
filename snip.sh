@@ -279,9 +279,17 @@ edit() {
 }
 
 del() {
-    [ -z "$1" ] && abort "Missing snippet path"
+    if [ -z "$1" ]; then
+        snippet_path=$(find "$SNIPPETS_DIR" | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")
 
-    snippet_path="$SNIPPETS_DIR/$1"
+        if [ -z "$snippet_path" ]; then
+            exit
+        fi
+
+        snippet_path="$SNIPPETS_DIR/$snippet_path"
+    else
+        snippet_path="$SNIPPETS_DIR/$1"
+    fi
 
     if [ ! -e "$snippet_path" ]; then
         abort "\"$snippet_path\" doesn't exists. Exiting ..."
@@ -426,8 +434,6 @@ show() {
 }
 
 raw() {
-    [ -z "$1" ] && abort "Missing snippet path"
-
     show "$1" "--raw"
 }
 
