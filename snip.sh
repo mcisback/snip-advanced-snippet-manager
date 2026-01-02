@@ -5,6 +5,8 @@
 ##  osascript -e 'display notification "Build finished" with title "CI" subtitle "Success"'
 ## or terminal-notifier
 # TODO: add trash
+# TODO: add default values to var, like @{bindAddres defaults to 0.0.0.0}
+# FIX: sometime it asks again var already setted
 
 
 case "$(uname -s)" in
@@ -455,32 +457,55 @@ show() {
     ### vars are like this @{varName}
     ### If snip finds a @{varName}, it asks user for value for varName
     ### and substitutes all the @{varName} with the user inputted value
+    #
 
     vars=()
+    regex="@\{([^}]+)\}"
 
-    for varName in $(echo "$snippet" | awk '{
-        while(match($0, /@\{[^}]+\}/)) {
-            var = substr($0, RSTART+2, RLENGTH-3)
-            print var
-            $0 = substr($0, RSTART+RLENGTH)
-        }
-    }'); do
-        found=false
-        for item in "${vars[@]}"; do
-            if [[ "$item" == "$varName" ]]; then
-                found=true
-                break
+    # First pass: collect all unique variables
+    while IFS= read -r line; do
+        while [[ $line =~ $regex ]]; do
+            varName="${BASH_REMATCH[1]}"
+
+            # Check if we've already seen this variable
+            found=false
+            for item in "${vars[@]}"; do
+                if [[ "$item" == "$varName" ]]; then
+                    found=true
+                    break
+                fi
+            done
+
+            if [[ "$found" == false ]]; then
+                vars+=("$varName")
             fi
+
+            line="${line#*"${BASH_REMATCH[0]}"}"
         done
+    done <<< "$snippet"
 
-        if [[ "$found" != true ]]; then
-            vars+="$varName"
-
-            userInput=$(gum input --placeholder "Value for $varName")
-
-            snippet="${snippet//\@{$varName\}/$userInput}"
+    # Second pass: prompt for each unique variable
+    for varName in "${vars[@]}"; do
+        delimiter=" defaults to "
+        if [[ "$varName" == *"$delimiter"* ]]; then
+            part1="${varName%% defaults to *}"
+            part2="${varName##* defaults to }"
+        else
+            part1="$varName"
+            part2=""
         fi
 
+        actualVarName="$part1"
+        defaultValue="$part2"
+
+        if [ -n "$defaultValue" ]; then
+            userInput=$(gum input --placeholder "Value for $actualVarName" --value="$defaultValue")
+        else
+            userInput=$(gum input --placeholder "Value for $actualVarName")
+        fi
+
+        # Replace all occurrences of this variable
+        snippet="${snippet//@\{$varName\}/$userInput}"
     done
 
     echo "$snippet" | bat --color=always -p
