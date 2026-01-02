@@ -4,6 +4,7 @@
 # TODO: add notification for Mac:
 ##  osascript -e 'display notification "Build finished" with title "CI" subtitle "Success"'
 ## or terminal-notifier
+# TODO: add trash
 
 
 case "$(uname -s)" in
@@ -220,7 +221,7 @@ decrypt() {
 
 edit() {
     if [ -z "$1" ]; then
-        snippet_path=$(find "$SNIPPETS_DIR" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")
+        snippet_path=$(find "$SNIPPETS_DIR" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 '$SNIPPETS_DIR/{}'")
 
         if [ -z "$snippet_path" ]; then
             exit
@@ -280,7 +281,7 @@ edit() {
 
 del() {
     if [ -z "$1" ]; then
-        snippet_path=$(find "$SNIPPETS_DIR" | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 $SNIPPETS_DIR/{}")
+        snippet_path=$(find "$SNIPPETS_DIR" -mindepth 1 | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 '$SNIPPETS_DIR/{}'")
 
         if [ -z "$snippet_path" ]; then
             exit
@@ -298,7 +299,7 @@ del() {
     if [ -d "$snippet_path" ]; then
         echo "⚠️ \"$snippet_path\" is a directory containing multiple snippets..."
 
-        if gum confirm "Confirm deletion ?"; then
+        if gum confirm "Confirm deletion ?" --default="no"; then
             rm -rdf "$snippet_path"
         else
             echo "Abort"
@@ -331,7 +332,7 @@ search() {
 
     action="$1"
 
-    snippet_path=$(find "$snippet_path" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")
+    snippet_path=$(find "$snippet_path" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 '$SNIPPETS_DIR/{}'")
 
     if [ -z "$snippet_path" ]; then
        exit
@@ -496,7 +497,7 @@ share() {
 
     if [[ "$snippet_path" == *.gpg ]]; then
 
-        if gum confirm "$1 is encrypted, are you sure to share it unencrypted ?"; then
+        if gum confirm "$1 is encrypted, are you sure to share it unencrypted ?" --default="no"; then
             snippet=$(decrypt "$1")
         else
             exit
