@@ -57,6 +57,7 @@ cmds=(
 "gpg_id"
 "encrypt"
 "decrypt"
+"doctor"
 )
 
 alss=(
@@ -76,6 +77,7 @@ alss=(
 "gi" #gpg-id
 "enc"
 "dec"
+"doc"
 )
 
 msgs=(
@@ -95,6 +97,7 @@ msgs=(
 "gpg_id set gpg-id to encrypt / unencrypt"
 "encrypt a snippet using gpg_id in $SNIP_GPG_ID_FILEPATH"
 "decrypt a snippet using gpg_id in $SNIP_GPG_ID_FILEPATH"
+"Check if all requirements are met"
 )
 
 COUNT=${#cmds[@]}
@@ -109,8 +112,54 @@ abort() {
     exit 1
 }
 
-print() {
-    echo -e "$1"
+doctor() {
+    ALL_OK=false
+    if [ -n "$(which gum)" ]; then
+        ALL_OK=true
+        echo "✅ gum is installed"
+    else
+        ALL_OK=false
+        echo "⚠️ gum is not installed (required). Install it from here: https://github.com/charmbracelet/gum"
+    fi
+
+    echo
+
+    if [ -n "$(which fzf)" ]; then
+        ALL_OK=true
+        echo "✅ fzf is installed"
+    else
+        ALL_OK=false
+        echo "⚠️ fzf is not installed (required). Install it from here: https://github.com/junegunn/fzf"
+    fi
+
+    echo
+
+    if [ -n "$(which bat)" ]; then
+        ALL_OK=true
+        echo "✅ bat is installed"
+    else
+        ALL_OK=false
+        echo "⚠️ bat is not installed (required). Install it from here: https://github.com/sharkdp/bat"
+    fi
+
+    echo
+
+    if [ -n "$(which gpg)" ]; then
+        ALL_OK=true
+        echo "✅ gpg is installed"
+    else
+        ALL_OK=false
+        echo "⚠️ gpg is not installed (required). Install it before using snip."
+    fi
+
+    echo
+    echo
+
+    if [ "$ALL_OK" = true ]; then
+        echo "✅ All required tools are installed"
+    else
+        echo "⚠️ Some required tools are missing. Please install them before using snip."
+    fi
 }
 
 add() {
@@ -531,6 +580,11 @@ sync() {
 
 # Add bla=$(echo "" | rofi -dmenu -p "Enter Text > "); echo "${bla}"
 runrofi() {
+    if [ -z "$(which rofi)" ]; then
+        echo "⚠️ rofi is not installed, install it before using this command"
+        exit 1
+    fi
+
     action="$1"
 
     if [ -z "$action" ]; then
