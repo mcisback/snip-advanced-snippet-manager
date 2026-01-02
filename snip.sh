@@ -113,9 +113,13 @@ print() {
 }
 
 add() {
-    [ -z "$1" ] && abort "Missing snippet path"
+    s_path="$1"
 
-    snippet_path="$SNIPPETS_DIR/$1"
+    if [ -z "$1" ]; then
+        s_path=$(gum input --placeholder "Snippet path")
+    fi
+
+    snippet_path="$SNIPPETS_DIR/$s_path"
     filename=""
 
     isValid="$(echo "$snippet_path" | grep /)"
@@ -135,7 +139,22 @@ add() {
 
     touch "$snippet_path"
 
-    edit "$1"
+
+    action=$(gum choose "inline" "open $EDITOR")
+
+    case "$action" in
+        "inline")
+           snippet=$(gum write --placeholder "Snippet content")
+
+           echo "$snippet" > "$snippet_path"
+           ;;
+        "open $EDITOR")
+           edit "$s_path"
+           ;;
+        *)
+            edit "$s_path"
+            ;;
+    esac
 }
 
 encrypt() {
@@ -200,9 +219,17 @@ decrypt() {
 }
 
 edit() {
-    [ -z "$1" ] && abort "Missing snippet path"
+    if [ -z "$1" ]; then
+        snippet_path=$(find "$SNIPPETS_DIR" -type f | sed -e "s#$SNIPPETS_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 "$SNIPPETS_DIR/{}"")
 
-    snippet_path="$SNIPPETS_DIR/$1"
+        if [ -z "$snippet_path" ]; then
+            exit
+        fi
+
+        snippet_path="$SNIPPETS_DIR/$snippet_path"
+    else
+        snippet_path="$SNIPPETS_DIR/$1"
+    fi
 
     if [ -f "$snippet_path.gpg" ]; then
         gpgId="$(cat $SNIP_GPG_ID_FILEPATH | tr -d '\n' | tr -d ' ')"
