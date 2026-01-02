@@ -1,4 +1,5 @@
-# Snip - A Bash Snippet Manager
+# Snip - Advanced Snippet Manager
+## Written in Bash
 
 A powerful command-line snippet manager for storing, organizing, and executing code snippets and commands with support for encryption, variables, and multiple interfaces (CLI, fzf, rofi).
 
