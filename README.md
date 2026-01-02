@@ -218,6 +218,21 @@ snip show passwords/api-keys
 snip decrypt passwords/api-keys
 ```
 
+#### Store Secrets
+
+```bash
+snip add secrets/openai/myproject/api-key
+
+# Encrypt a secret
+snip encrypt secrets/openai/myproject/api-key
+
+# Decrypt and view
+snip raw secrets/openai/myproject/api-keys
+# OR
+snip show secrets/openai/myproject/api-key
+```
+
+
 ### Sharing Snippets
 
 ```bash
@@ -236,6 +251,10 @@ snip share passwords/config
 cd ~/.snip
 git init
 git remote add origin <your-repo-url>
+git branch -M main
+git add .
+git commit -m "Initial commit"
+git push -u origin main
 
 # Sync snippets
 snip sync
