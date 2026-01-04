@@ -1,7 +1,11 @@
 # Snip - Advanced Snippet Manager
+
 ## Written in Bash
 
-A powerful command-line snippet manager for storing, organizing, and executing code snippets and commands with support for encryption, variables with default values, OTP codes, and multiple interfaces (CLI, fzf, rofi).
+A powerful command-line snippet manager for storing, organizing, and executing
+code snippets and commands with support for encryption,
+variables with default values, OTP codes,
+and multiple interfaces (CLI, fzf, rofi).
 
 ## Features
 
@@ -21,10 +25,13 @@ A powerful command-line snippet manager for storing, organizing, and executing c
 
 1. Clone this repository or download the script
 2. Make it executable:
+
 ```bash
 chmod +x snip
 ```
+
 3. Move to your PATH (optional):
+
 ```bash
 sudo mv snip /usr/local/bin/
 ```
@@ -32,6 +39,7 @@ sudo mv snip /usr/local/bin/
 ## Dependencies
 
 ### Required
+
 - `bash`
 - `gpg` - For encryption features
 - `gum` - For interactive prompts ([install here](https://github.com/charmbracelet/gum))
@@ -39,6 +47,7 @@ sudo mv snip /usr/local/bin/
 - `bat` - For syntax-highlighted preview ([install here](https://github.com/sharkdp/bat))
 
 ### Optional
+
 - `rofi` - For GUI snippet selection
 - `tree` - For directory listing
 - `git` - For sync functionality
@@ -55,12 +64,14 @@ snip doctor
 ```
 
 This will show:
+
 - ✅ Installed tools
 - ⚠️ Missing tools with installation links
 
 ## Configuration
 
 On first run, snip creates:
+
 - `~/.snip/` - Main directory
 - `~/.snip/snippets/` - Snippets storage
 - `~/.snip/.env` - Configuration file
@@ -69,16 +80,19 @@ On first run, snip creates:
 ### Default Configuration
 
 The `.env` file contains:
+
 ```bash
 EDITOR=vim
 ```
 
 You can customize settings:
+
 ```bash
 snip config edit
 ```
 
 Available config commands:
+
 - `snip config home` - Print snip home path
 - `snip config snippets` - Print snippets directory
 - `snip config dotenv` - Print config file path
@@ -212,6 +226,7 @@ docker run -d \
 ```
 
 When you show or run this snippet, you'll be prompted for:
+
 - `container_name`
 - `port`
 - `image_name`
@@ -233,11 +248,13 @@ docker run -d \
 When prompted, the default value will be pre-filled. Simply press Enter to accept the default, or type a new value to override it.
 
 **Default value syntax:**
+
 - `@{varName defaults to defaultValue}` - Variable with a default
 - The default value appears after the ` defaults to ` delimiter
 - Spaces are preserved in default values
 
 **Example with complex defaults:**
+
 ```bash
 # Snippet: deploy/kubernetes
 kubectl apply -f @{manifest defaults to deployment.yaml}
@@ -446,6 +463,7 @@ snip runrofi -a
 ```
 
 Set custom rofi theme:
+
 ```bash
 # In ~/.snip/.env
 ROFI_USER_THEME=/path/to/your/theme.rasi
@@ -456,6 +474,7 @@ ROFI_USER_THEME=/path/to/your/theme.rasi
 **Note:** The rofi copy function uses `pbcopy` (macOS). For Linux, you need `xclip` or `xsel`.
 **On Linux:**
 Add this in your .bashrc
+
 ```bash
 alias pbcopy='xclip -selection clipboard'
 ```
@@ -464,7 +483,7 @@ alias pbcopy='xclip -selection clipboard'
 
 Organize snippets in directories for better management:
 
-```
+```bash
 ~/.snip/snippets/
 ├── docker/
 │   ├── ps
@@ -541,15 +560,15 @@ DB_PASS=$(snip raw secrets/db-password)
 ## Security Notes
 
 1. **Encryption**: Encrypted snippets use GPG and require your GPG key
-2. **Sharing**: Be careful when sharing encrypted snippets - confirmation is required
-3. **Execution**: The `run` command requires confirmation (CTRL-R) before execution
-4. **Git Sync**: Ensure your git repository is private if storing sensitive data
+2. **Sharing**: Warning when sharing encrypted snippets
+3. **Execution**: `run` command requires confirmation (CTRL-R) before execution
 5. **OTP Secrets**: Consider encrypting OTP secrets for additional security
-6. **Encrypted Editing**: Temporary decrypted files are used during editing - ensure secure system
+6. **Encrypted Editing**: Temporary decrypted files are used during editing
 
 ## Troubleshooting
 
 ### Editor Not Found
+
 ```bash
 # Set your preferred editor
 echo "EDITOR=nano" >> ~/.snip/.env
@@ -558,6 +577,7 @@ snip config edit
 ```
 
 ### GPG Errors
+
 ```bash
 # Verify GPG ID is set
 snip gpg_id
@@ -570,6 +590,7 @@ snip gpg_id YOUR_KEY_ID
 ```
 
 ### Missing Dependencies
+
 ```bash
 # Check what's missing
 snip doctor
@@ -586,6 +607,7 @@ brew install gum
 ```
 
 ### OTP Not Working
+
 ```bash
 # Install oathtool
 # Ubuntu/Debian
@@ -596,6 +618,7 @@ brew install oath-toolkit
 ```
 
 ### Encrypted Edit Not Saving
+
 - Ensure you have write permissions to `~/.snip/snippets/`
 - Check that your GPG key is properly configured
 - Verify the GPG ID matches your key: `snip gpg_id`
@@ -603,16 +626,19 @@ brew install oath-toolkit
 ### Platform-Specific Issues
 
 **macOS:**
+
 - Uses `stat -f %m` for file modification time
 - Uses `pbcopy` for clipboard in rofi mode
 
 **Linux:**
+
 - Uses `stat -c %Y` for file modification time
 - May need `xclip` or `xsel` for clipboard support
 
 ## Tips & Tricks
 
 1. **Quick Access**: Create shell aliases:
+
    ```bash
    alias s='snip'
    alias sr='snip run'
@@ -621,7 +647,8 @@ brew install oath-toolkit
    alias sotp='snip otp'
    ```
 
-2. **Template Snippets with Defaults**: Use variables with defaults for reusable templates:
+2. **Template Snippets with Defaults**:
+
    ```bash
    # Snippet: projects/new
    mkdir -p @{project_name}/{src,tests,docs}
@@ -634,18 +661,21 @@ brew install oath-toolkit
    ```
 
 3. **Backup**: Regular sync keeps snippets safe:
+
    ```bash
    # Add to cron (every 6 hours)
    0 */6 * * * snip sync "Auto backup"
    ```
 
 4. **Categories**: Use consistent naming for easy searching:
+
    ```bash
    snip search docker    # Shows all docker-related snippets
    snip list kubernetes  # List all k8s snippets
    ```
 
 5. **Encrypted OTP**: Store 2FA codes securely:
+
    ```bash
    snip otp github
    # Choose to encrypt when prompted
@@ -653,6 +683,7 @@ brew install oath-toolkit
    ```
 
 6. **Complex Variables with Defaults**: Chain snippets with sensible defaults:
+
    ```bash
    # Snippet: deploy/app
    IMAGE=@{docker_image defaults to myapp}
@@ -663,12 +694,14 @@ brew install oath-toolkit
    ```
 
 7. **Interactive Editing**: Use fzf for quick access:
+
    ```bash
    snip edit
    # Opens fzf, select snippet, edit immediately
    ```
 
 8. **Safe Deletion**: Preview before deleting:
+
    ```bash
    snip del
    # Opens fzf with preview, select to delete
@@ -678,6 +711,7 @@ brew install oath-toolkit
 ## Common Workflows
 
 ### Managing API Keys
+
 ```bash
 # Store encrypted API key
 snip add secrets/openai/key
@@ -689,6 +723,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.openai.com
 ```
 
 ### Quick Commands
+
 ```bash
 # Store frequently used commands
 snip add docker/cleanup
@@ -699,6 +734,7 @@ snip run docker/cleanup
 ```
 
 ### Project Templates
+
 ```bash
 # Create project template with variables and defaults
 snip add templates/react-app
@@ -713,6 +749,7 @@ snip run templates/react-app
 ```
 
 ### SSH Connection Manager
+
 ```bash
 # Create SSH snippets with defaults
 snip add ssh/production
@@ -725,7 +762,7 @@ snip run ssh/production
 
 ## File Structure
 
-```
+```bash
 ~/.snip/
 ├── .env                 # Configuration file
 ├── .gpgid              # GPG key ID for encryption
@@ -751,6 +788,7 @@ This script is provided as-is for personal and commercial use.
 ## Changelog
 
 ### Latest Version
+
 - ✅ Added variable default values with `@{var defaults to value}` syntax
 - ✅ Added OTP/TOTP support for 2FA codes with show/edit/del actions
 - ✅ Added `doctor` command to check dependencies
