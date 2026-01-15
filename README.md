@@ -13,6 +13,7 @@ and multiple interfaces (CLI, fzf, rofi).
 - **Variable Substitution**: Use `@{varName}` placeholders for dynamic values with optional defaults
 - **GPG Encryption**: Encrypt sensitive snippets with GPG
 - **OTP Support**: Store and generate TOTP codes for 2FA
+- **Password Management**: Store and manage passwords with username, URL, and notes
 - **Secrets Management**: Store and encrypt sensitive data securely like API keys, passwords, etc...
 - **Multiple Interfaces**: CLI, fzf search, and rofi integration
 - **Git Sync**: Version control and sync snippets across devices
@@ -123,6 +124,7 @@ Available config commands:
 | `encrypt` | `enc` | Encrypt a snippet |
 | `decrypt` | `dec` | Decrypt a snippet |
 | `otp` | `otp` | Manage OTP/TOTP codes |
+| `password` | `psw` | Manage passwords with username, URL, and notes |
 
 ### Examples
 
@@ -407,6 +409,101 @@ snip otp del github/personal
 
 **Note:** OTP secrets are stored in `~/.snip/snippets/otp/` and can be encrypted for additional security.
 
+### Password Management
+
+Snip includes built-in password management functionality to securely store credentials with username, password, URL, and notes.
+
+#### Password Commands
+
+| Action | Command | Description |
+|--------|---------|-------------|
+| Create | `snip password myservice` | Create new password entry or show existing one |
+| Show All | `snip password show myservice` | Show all password fields |
+| Show Password | `snip password show -p myservice` | Show only password |
+| Show Username | `snip password show -u myservice` | Show only username |
+| Show URL | `snip password show -l myservice` | Show only URL |
+| Show Notes | `snip password show -n myservice` | Show only notes |
+| Edit | `snip password edit myservice` | Edit password entry |
+| Delete | `snip password del myservice` | Delete password entry |
+
+**Note:** When no action is specified, `show` is the default behavior.
+
+#### Create Password Entry
+
+```bash
+# Create new password
+snip password myservice
+# Prompts for:
+# - Username
+# - Password
+# - URL
+# - Notes (multi-line)
+# Asks if you want to encrypt it
+
+# Create password in subfolder
+snip password github/personal
+```
+
+#### View Password
+
+```bash
+# Show all fields (explicit action)
+snip password show myservice
+# Output:
+# username:john.doe
+# password:secretpass123
+# url:https://example.com
+# notes:My notes here
+
+# Show all fields (implicit, same as above)
+snip password myservice
+
+# Show only password
+snip password show -p myservice
+# Output: secretpass123
+
+# Show only username
+snip password show -u myservice
+# Output: john.doe
+
+# Show only URL
+snip password show -l myservice
+# Output: https://example.com
+
+# Show only notes
+snip password show -n myservice
+# Output: My notes here
+
+# Interactive selection (no argument)
+snip password
+# Opens fzf to select from available passwords
+```
+
+#### Edit Password
+
+```bash
+# Edit password entry
+snip password edit myservice
+# Prompts for each field with current value pre-filled
+
+# Edit encrypted password
+snip password edit github/personal
+# Decrypts, allows editing, re-encrypts
+```
+
+#### Delete Password
+
+```bash
+# Delete password entry
+snip password del myservice
+
+# Delete encrypted password
+snip password del github/personal
+# Removes the .gpg file
+```
+
+**Note:** Password entries are stored in `~/.snip/snippets/passwords/` and can be encrypted for additional security.
+
 ### Sharing Snippets
 
 ```bash
@@ -502,9 +599,13 @@ Organize snippets in directories for better management:
 │   ├── github.gpg
 │   ├── google.gpg
 │   └── aws.gpg
+├── passwords/
+│   ├── github.gpg
+│   ├── google.gpg
+│   └── work-email.gpg
 └── secrets/
     ├── api-keys.gpg
-    └── passwords.gpg
+    └── tokens.gpg
 ```
 
 ## Advanced Usage
@@ -645,6 +746,7 @@ brew install oath-toolkit
    alias sf='snip search'
    alias se='snip edit'
    alias sotp='snip otp'
+   alias spsw='snip password'
    ```
 
 2. **Template Snippets with Defaults**:
@@ -682,7 +784,16 @@ brew install oath-toolkit
    # Later: snip otp github outputs current code
    ```
 
-6. **Complex Variables with Defaults**: Chain snippets with sensible defaults:
+6. **Password Management**: Store credentials with full details:
+
+   ```bash
+   snip password github
+   # Enter username, password, URL, and notes
+   # Choose to encrypt when prompted
+   # Later: snip password show -p github outputs just the password
+   ```
+
+7. **Complex Variables with Defaults**: Chain snippets with sensible defaults:
 
    ```bash
    # Snippet: deploy/app
@@ -693,14 +804,14 @@ brew install oath-toolkit
    kubectl scale deployment/@{app_name defaults to web} --replicas=$REPLICAS
    ```
 
-7. **Interactive Editing**: Use fzf for quick access:
+8. **Interactive Editing**: Use fzf for quick access:
 
    ```bash
    snip edit
    # Opens fzf, select snippet, edit immediately
    ```
 
-8. **Safe Deletion**: Preview before deleting:
+9. **Safe Deletion**: Preview before deleting:
 
    ```bash
    snip del
@@ -709,6 +820,22 @@ brew install oath-toolkit
    ```
 
 ## Common Workflows
+
+### Managing Passwords
+
+```bash
+# Store encrypted password
+snip password github/work
+# Enter username, password, URL, and notes
+# Choose to encrypt
+
+# Get password in scripts
+GITHUB_USER=$(snip password show -u github/work)
+GITHUB_PASS=$(snip password show -p github/work)
+
+# Or just view all details
+snip password show github/work
+```
 
 ### Managing API Keys
 
@@ -773,8 +900,10 @@ snip run ssh/production
     │   └── cleanup
     ├── secrets/
     │   └── api-key.gpg  # Encrypted snippets
-    └── otp/
-        └── github.gpg   # Encrypted OTP secrets
+    ├── otp/
+    │   └── github.gpg   # Encrypted OTP secrets
+    └── passwords/
+        └── github.gpg   # Encrypted password entries
 ```
 
 ## Contributing
@@ -789,6 +918,8 @@ This script is provided as-is for personal and commercial use.
 
 ### Latest Version
 
+- ✅ Added password management with username, password, URL, and notes fields
+- ✅ Added password show flags (-p, -u, -l, -n) for selective field display
 - ✅ Added variable default values with `@{var defaults to value}` syntax
 - ✅ Added OTP/TOTP support for 2FA codes with show/edit/del actions
 - ✅ Added `doctor` command to check dependencies
