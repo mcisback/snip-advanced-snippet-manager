@@ -56,6 +56,7 @@ cmds=(
 "decrypt"
 "doctor"
 "otp"
+"password"
 )
 
 alss=(
@@ -77,6 +78,7 @@ alss=(
 "dec"
 "doc"
 "otp"
+"psw"
 )
 
 msgs=(
@@ -97,7 +99,8 @@ msgs=(
 "encrypt a snippet using gpg_id in $SNIP_GPG_ID_FILEPATH"
 "decrypt a snippet using gpg_id in $SNIP_GPG_ID_FILEPATH"
 "Check if all requirements are met"
-"Store OTP secrets in otp folder. If otp exists, show the code else it create a new one"
+"Store OTP secrets in otp folder. If otp exists, show the code else it create a new one."
+"Store passwords in passwords folder. If password exists, show the password else create new one."
 )
 
 COUNT=${#cmds[@]}
@@ -388,12 +391,14 @@ search() {
     fi
 
     if [ -z "$action" ]; then
-        action=$(gum choose "show" "edit" "delete")
+        action=$(gum choose "show" "run" "edit" "delete")
     fi
 
     if  [ "$action" == "edit" ]; then
         snippet_path=$(echo "$snippet_path" | sed 's#\.gpg$##')
         edit "$snippet_path"
+    elif [ "$action" == "run" ]; then
+        run "$snippet_path"
     elif [ "$action" == "show" ]; then
         show "$snippet_path"
     elif [ "$action" == "delete" ]; then
@@ -539,7 +544,11 @@ run() {
 
     read -rsn1 key
     if [[ $key == $'\x12' ]]; then
+        echo "Running: $cmd"
+        
         eval "$cmd"
+
+        exit
     fi
 }
 
@@ -800,6 +809,141 @@ otp() {
         otpSecret=$(gum input --placeholder "Edit OTP Secret" --value="$otpSecret")
 
         echo "$otpSecret" > "$snippet_path"
+    elif [ "$action" == "del" ]; then
+        rm -f "$snippet_path"
+
+        echo "✅ Deleted $snippet_path"
+    fi
+}
+
+password() {
+    action="show"
+    what=""
+
+    if [ "$1" == "edit" ]; then
+        action="edit"
+        shift
+    elif [ "$1" == "del" ]; then
+        action="del"
+        shift
+    elif [ "$1" == "show" ]; then
+        shift
+    fi
+
+    if [ "$action" == "show" ]; then
+        if [ "$1" == "-p" ]; then
+            what="password"
+            shift
+        elif [ "$1" == "-u" ]; then
+            what="username"
+            shift
+        elif [ "$1" == "-l" ]; then
+            what="url"
+            shift
+        elif [ "$1" == "-n" ]; then
+            what="notes"
+            shift
+        fi
+    fi
+
+    PSW_DIR="$SNIPPETS_DIR/passwords"
+    s_path="$1"
+
+    if [ ! -d "$PSW_DIR" ]; then
+        mkdir -p "$PSW_DIR"
+    fi
+
+    if [ -z "$s_path" ]; then
+        snippet_path=$(find "$PSW_DIR" -type f | sed -e "s#$PSW_DIR/##g" | fzf --height=40% --preview "bat --color=always --style=numbers --line-range=:500 '$PSW_DIR/{}'")
+
+        if [ -z "$snippet_path" ]; then
+            exit
+        fi
+
+        snippet_path="$PSW_DIR/$snippet_path"
+        snippet_path=$(echo "$snippet_path" | sed 's#\.gpg$##')
+    else
+        snippet_path="$PSW_DIR/$s_path"
+    fi
+
+    if [ -f "$snippet_path.gpg" ]; then
+        gpgId="$(cat $SNIP_GPG_ID_FILEPATH | tr -d '\n' | tr -d ' ')"
+        fileContent=$(gpg -q -d -u "$gpgId" "$snippet_path.gpg")
+
+        if [ "$action" == "show" ]; then
+            if [ -n "$what" ]; then
+                echo "$fileContent" | grep -i "$what" | sed -e 's/^[^:]*://'
+            else
+                echo "$fileContent"
+            fi
+        elif [ "$action" == "edit" ]; then
+            username=$(echo "$fileContent" | grep "username" | sed -e 's/^[^:]*://')
+            password=$(echo "$fileContent" | grep "password" | sed -e 's/^[^:]*://')
+            url=$(echo "$fileContent" | grep "url" | sed -e 's/^[^:]*://')
+            notes=$(echo "$fileContent" | grep "notes" | sed -e 's/^[^:]*://')
+
+            username=$(gum input --placeholder "Edit Username" --value="$username")
+            password=$(gum input --placeholder "Edit Password" --value="$password")
+            url=$(gum input --placeholder "Edit URL" --value="$url")
+            notes=$(gum input --placeholder "Edit NOTES" --value="$notes")
+
+            echo -e "username:$username\npassword:$password\nurl:$url\nnotes:$notes\n" > "$snippet_path"
+
+            snippet_path=$(echo "$snippet_path" | sed "s#^$SNIPPETS_DIR/##")
+
+            encrypt "$snippet_path"
+        elif [ "$action" == "del" ]; then
+            rm -f "$snippet_path.gpg"
+
+            echo "✅ Deleted $snippet_path.gpg"
+        fi
+
+        exit
+    fi
+
+    if [ ! -f "$snippet_path" ]; then
+        username=$(gum input --placeholder "Enter New Username")
+        password=$(gum input --placeholder "Enter New Password")
+
+        if [ -z "$password" ]; then
+            echo "⚠️ Password cannot be empty"
+            exit
+        fi
+
+        url=$(gum input --placeholder "Enter URL")
+
+        notes=$(gum write --placeholder "Notes")
+
+        mkdir -p "$(dirname "$snippet_path")"
+
+        echo -e "username:$username\npassword:$password\nurl:$url\nnotes:$notes\n" > "$snippet_path"
+
+        if gum confirm "Do you want to encrypt the password?" --default="no"; then
+            encrypt "passwords/$s_path"
+        fi
+
+        exit
+    fi
+
+    fileContent=$(cat "$snippet_path")
+    if [ "$action" == "show" ]; then
+        if [ -n "$what" ]; then
+            echo "$fileContent" | grep -i "$what" | sed -e 's/^[^:]*://'
+        else
+            echo "$fileContent"
+        fi
+    elif [ "$action" == "edit" ]; then
+        username=$(cat "$snippet_path" | grep "username" | sed -e 's/^[^:]*://')
+        password=$(cat "$snippet_path" | grep "password" | sed -e 's/^[^:]*://')
+        url=$(cat "$snippet_path" | grep "url" | sed -e 's/^[^:]*://')
+        notes=$(cat "$snippet_path" | grep "notes" | sed -e 's/^[^:]*://')
+
+        username=$(gum input --placeholder "Edit Username" --value="$username")
+        password=$(gum input --placeholder "Edit Password" --value="$password")
+        url=$(gum input --placeholder "Edit URL" --value="$url")
+        notes=$(gum input --placeholder "Edit NOTES" --value="$notes")
+
+        echo -e "username:$username\npassword:$password\nurl:$url\nnotes:$notes\n" > "$snippet_path"
     elif [ "$action" == "del" ]; then
         rm -f "$snippet_path"
 
