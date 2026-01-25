@@ -366,16 +366,29 @@ del() {
 }
 
 list() {
+    IS_RAW="false"
     snippet_path="$SNIPPETS_DIR/$1"
+
+    shift
+
+    if [[ "$1" == "--raw" ]]; then
+        IS_RAW="true"
+    fi
 
     if [ ! -d "$snippet_path" ]; then
         abort "\"$snippet_path\" doesn't exists or it is a file. Exiting ..."
     fi
 
-    tree "$snippet_path"
+    if [[ "$IS_RAW" == "false" ]]; then
+        tree "$snippet_path"
+    fi
+
+    find "$snippet_path" -type f | sed -e "s|$SNIPPETS_DIR||g" | sed -e 's#^/##g' | sed -e 's#\.gpg$##g'
+    exit
 }
 
 search() {
+    query="$1"
     snippet_path="$SNIPPETS_DIR"
 
     if [ ! -d "$snippet_path" ]; then
@@ -391,7 +404,7 @@ search() {
     fi
 
     if [ -z "$action" ]; then
-        action=$(gum choose "show" "run" "edit" "delete")
+        action=$(gum choose "show" "copy-to-clipboard" "run" "edit" "delete")
     fi
 
     if  [ "$action" == "edit" ]; then
@@ -401,6 +414,8 @@ search() {
         run "$snippet_path"
     elif [ "$action" == "show" ]; then
         show "$snippet_path"
+    elif [ "$action" == "copy-to-clipboard" ]; then
+        show "$snippet_path" | pbcopy
     elif [ "$action" == "delete" ]; then
         del "$snippet_path"
     fi
@@ -486,6 +501,13 @@ show() {
 
     # Second pass: prompt for each unique variable
     for varName in "${vars[@]}"; do
+        initialVarName="$varName"
+
+        ### Process functions like @shell divided by | pipe operator
+        IFS='|' read -ra parts <<< "$varName"
+
+        varName="${parts[0]}"
+
         delimiter=" defaults to "
         if [[ "$varName" == *"$delimiter"* ]]; then
             part1="${varName%% defaults to *}"
@@ -495,6 +517,7 @@ show() {
             part2=""
         fi
 
+        
         actualVarName="$part1"
         defaultValue="$part2"
 
@@ -504,8 +527,23 @@ show() {
             userInput=$(gum input --placeholder "Value for $actualVarName")
         fi
 
+        ### Process functions like @shell divided by | pipe operator
+        for part in "${parts[@]:1}"; do
+            case "$part" in
+                @shell*)
+                    if [[ "$part" =~ \`([^\`]+)\` ]]; then
+                        extracted="${BASH_REMATCH[1]}"
+
+                        # echo "Starts with @shell: $extracted"
+
+                        userInput=$(echo "$userInput" | $extracted)
+                    fi
+                    ;;
+            esac
+        done
+
         # Replace all occurrences of this variable
-        snippet="${snippet//@\{$varName\}/$userInput}"
+        snippet="${snippet//@\{$initialVarName\}/$userInput}"
     done
 
     echo "$snippet" | bat --color=always -p
